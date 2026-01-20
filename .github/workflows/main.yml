@@ -1,0 +1,80 @@
+name: 5sim TikTok SMS Code Retrieval
+
+on:
+  workflow_dispatch:
+    inputs:
+      choice:
+        description: 'Enter your choice to continue (e.g., start, stop)'
+        required: true
+        default: 'start'
+
+jobs:
+  get_sms_code:
+    runs-on: ubuntu-latest
+    env:
+      FIVESIM_API_KEY: 961cbb06fc654a709bb463c94f6c9583
+      SERVICE: tiktok
+      COUNTRY: us
+      PREFIX: +1
+
+    steps:
+      - name: Check 5sim balance
+        id: balance
+        run: |
+          balance_response=$(curl -s -H "Authorization: Bearer $FIVESIM_API_KEY" https://5sim.net/v1/user/balance)
+          balance=$(echo "$balance_response" | jq -r '.balance')
+          echo "Current balance: $balance USD"
+          if (( $(echo "$balance < 0.50" | bc -l) )); then
+            echo "Balance too low to purchase number. Exiting."
+            exit 1
+          fi
+          echo "BALANCE=$balance" >> $GITHUB_ENV
+
+      - name: Purchase phone number with prefix +1
+        id: purchase
+        run: |
+          echo "Purchasing number for service: $SERVICE, country: $COUNTRY"
+          purchase_response=$(curl -s -H "Authorization: Bearer $FIVESIM_API_KEY" \
+            "https://5sim.net/v1/user/buy/activation/$SERVICE/$COUNTRY/any")
+          echo "$purchase_response"
+          phone=$(echo "$purchase_response" | jq -r '.phone')
+          id=$(echo "$purchase_response" | jq -r '.id')
+          status=$(echo "$purchase_response" | jq -r '.status')
+          echo "Purchased number: $phone"
+          echo "Purchase ID: $id"
+          echo "Status: $status"
+          if [[ "$phone" != +1* ]]; then
+            echo "Warning: Purchased number does not have prefix +1"
+          fi
+          echo "PHONE=$phone" >> $GITHUB_ENV
+          echo "PURCHASE_ID=$id" >> $GITHUB_ENV
+          echo "STATUS=$status" >> $GITHUB_ENV
+
+      - name: Poll for SMS code (max 10 attempts)
+        id: poll_sms
+        run: |
+          for i in $(seq 1 10); do
+            echo "Attempt $i: Checking SMS status..."
+            sms_response=$(curl -s -H "Authorization: Bearer $FIVESIM_API_KEY" \
+              "https://5sim.net/v1/user/check/$PURCHASE_ID")
+            status=$(echo "$sms_response" | jq -r '.status')
+            echo "Status: $status"
+            if [[ "$status" == "RECEIVED" ]]; then
+              code=$(echo "$sms_response" | jq -r '.sms[0].code')
+              echo "SMS code received: $code"
+              echo "CODE=$code" >> $GITHUB_OUTPUT
+              exit 0
+            elif [[ "$status" == "CANCELED" || "$status" == "EXPIRED" ]]; then
+              echo "SMS request canceled or expired. Exiting."
+              exit 1
+            else
+              echo "Waiting 10 seconds before next check..."
+              sleep 10
+            fi
+          done
+          echo "SMS code not received after 10 attempts."
+          exit 1
+
+      - name: Output SMS code
+        run: |
+          echo "Received SMS code: ${{ steps.poll_sms.outputs.CODE }}"
