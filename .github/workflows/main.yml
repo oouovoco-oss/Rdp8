@@ -1,0 +1,56 @@
+name: Windows 10 VNC Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows-vnc:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Display setup message
+        shell: cmd
+        run: |
+          echo =========================================
+          echo  Windows 10 VNC Server Setup
+          echo =========================================
+          echo Installing VNC server...
+          echo Please wait 40 seconds to continue
+          echo =========================================
+
+      - name: Wait 40 seconds
+        shell: cmd
+        run: timeout /t 40
+
+      - name: Download TightVNC
+        shell: powershell
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://www.tightvnc.com/download/2.8.81/tightvnc-2.8.81-gpl-setup-64bit.msi" `
+            -OutFile "tightvnc.msi"
+
+      - name: Install TightVNC silently
+        shell: cmd
+        run: |
+          msiexec /i tightvnc.msi /quiet /norestart
+
+      - name: Configure VNC password
+        shell: cmd
+        run: |
+          REM Example static password (for demo only)
+          reg add "HKLM\SOFTWARE\TightVNC\Server" /v Password /t REG_BINARY /d 0102030405060708 /f
+          reg add "HKLM\SOFTWARE\TightVNC\Server" /v ControlPassword /t REG_BINARY /d 0102030405060708 /f
+
+      - name: Start VNC Server
+        shell: cmd
+        run: |
+          net start tvnserver
+          echo =========================================
+          echo VNC Server Running on 127.0.0.1:1
+          echo =========================================
+
+      - name: Keep runner alive (5 minutes)
+        shell: cmd
+        run: |
+          ping 127.0.0.1 -n 300
