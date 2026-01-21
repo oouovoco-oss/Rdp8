@@ -1,0 +1,56 @@
+name: Temp Mail Inbox Wait Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      choice:
+        description: "Enter your choice (1=email, 2=wait & inbox, 3=exit)"
+        required: true
+        default: "1"
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show Menu
+        run: |
+          echo "Enter your choice to continue:"
+          echo "1. Show your temporary email address"
+          echo "2. Wait 15 minutes and check inbox 📥 (demo)"
+          echo "3. Exit"
+          echo "Choice: ${{ github.event.inputs.choice }}"
+
+      - name: Show Temporary Email
+        if: ${{ github.event.inputs.choice == '1' }}
+        run: |
+          echo "Username: StarryPixel765"
+          echo "Temporary Email Address: StarryPixel765@tmailor.com"
+          echo "Status: active (DEMO)"
+
+      - name: Waiting Period (Demo)
+        if: ${{ github.event.inputs.choice == '2' }}
+        run: |
+          echo "Inbox status: pending"
+          echo "Please wait 10–15 minutes..."
+          # Demo wait (shortened to 30s to avoid long CI runs)
+          sleep 30
+          echo "Waiting complete."
+
+      - name: Show Inbox 📥 (Demo)
+        if: ${{ github.event.inputs.choice == '2' }}
+        run: |
+          echo "Inbox 📥 for StarryPixel765@tmailor.com"
+          echo "-------------------------------------"
+          echo "[1] Welcome to TMailor (DEMO)"
+          echo "    From: noreply@tmailor.com"
+          echo "    Subject: Your temporary inbox is ready"
+          echo ""
+          echo "[2] Verification Email (DEMO)"
+          echo "    From: service@example.com"
+          echo "    Subject: Your code is 482931"
+          echo ""
+          echo "Status: received (DEMO)"
+
+      - name: Exit
+        if: ${{ github.event.inputs.choice == '3' }}
+        run: echo "Exiting workflow."
