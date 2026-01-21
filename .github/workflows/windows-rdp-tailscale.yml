@@ -1,0 +1,39 @@
+name: Windows RDP Tailscale
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Enable RDP & Create User
+      run: |
+        net user runneradmin ${{ secrets.RDP_PASSWORD }}
+        net localgroup administrators runneradmin /add
+        Set-ItemProperty "HKLM:\System\CurrentControlSet\Control\Terminal Server" `
+          -Name fDenyTSConnections -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    - name: Install System Packages
+      run: |
+        choco install -y git python nodejs vscode 7zip
+
+    - name: Install & Connect Tailscale
+      run: |
+        choco install -y tailscale
+        "C:\Program Files\Tailscale\tailscale.exe" up `
+          --authkey=${{ secrets.TAILSCALE_AUTHKEY }} `
+          --hostname=gha-windows-rdp
+
+    - name: Verify RDP Accessibility
+      run: |
+        echo "Tailscale IPv4:"
+        "C:\Program Files\Tailscale\tailscale.exe" ip -4
+        echo "RDP port check (3389):"
+        Test-NetConnection -ComputerName localhost -Port 3389
+
+    - name: Keep RDP Alive
+      run: timeout /t 21600
