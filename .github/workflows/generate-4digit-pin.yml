@@ -1,0 +1,31 @@
+name: Generate Demo 4-Digit PIN
+
+on:
+  workflow_dispatch:
+    inputs:
+      choice:
+        description: "Enter your choice (1=Generate PIN, 2=Exit)"
+        required: true
+        default: "1"
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show Menu
+        run: |
+          echo "Enter your choice to continue:"
+          echo "1. Generate demo PIN (4 digits)"
+          echo "2. Exit"
+          echo "Choice: ${{ github.event.inputs.choice }}"
+
+      - name: Generate 4-Digit PIN (Demo)
+        if: ${{ github.event.inputs.choice == '1' }}
+        run: |
+          PIN=$(shuf -i 1000-9999 -n 1)
+          echo "Generated 4-digit demo PIN: $PIN"
+          echo "Status: generated"
+
+      - name: Exit
+        if: ${{ github.event.inputs.choice == '2' }}
+        run: echo "Exiting workflow."
